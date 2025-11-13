@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analítico de Palma de Aceite</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-green: #2e7d32;
+            --secondary-green: #4caf50;
+            --light-green: #e8f5e9;
+            --dark-brown: #5d4037;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            background-color: var(--light-green);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary-green);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .icon {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            fill: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            color: var(--dark-brown);
+            margin-top: 0;
+            border-bottom: 2px solid var(--secondary-green);
+            padding-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        h2 .chart-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+        
+        .filters label {
+            font-weight: bold;
+        }
+
+        .filters select {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary-green);
+            color: white;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--light-green);
+        }
+
+        .download-button {
+            background-color: var(--secondary-green);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .download-button:hover {
+            background-color: #388e3c;
+        }
+
+        .toggle-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+        
+        .toggle-button {
+            background-color: var(--primary-green);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .toggle-button:hover {
+            background-color: #215e24;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path fill="white" d="M12 4a8 8 0 0 0-8 8c0 4.41 3.59 8 8 8s8-3.59 8-8a8 8 0 0 0-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+            Dashboard de Análisis del Sector Palma de Aceite
+        </h1>
+    </header>
+
+    <div class="container">
+        
+        <div class="filters">
+            <label for="year-select">Seleccionar Año:</label>
+            <select id="year-select"></select>
+            <button class="download-button" id="download-report">Descargar Reporte (Excel)</button>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2><svg class="chart-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>Producción por Zona</h2>
+                <div class="chart-container">
+                    <canvas id="produccionChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2><svg class="chart-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM12 10.16V6H7v5.16l2 2v-1.15zM17 14.16V10h-4v4.16l2 2v-1.15z"/></svg>Ventas por Mercado</h2>
+                <div class="chart-container">
+                    <canvas id="ventasChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><svg class="chart-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.43 5.43c-1.25 0-2.5 1.5-2.5 1.5V13c0 2.76 2.24 5 5 5h3c.55 0 1-.45 1-1V6.5c0-.9-.7-1.57-1.55-1.57h-1.02c-.38 0-.74.12-1.05.34l-1.07-1.07c-.4-.4-.95-.67-1.5-.67z"/></svg>Área Neta Sembrada</h2>
+                <div class="chart-container">
+                    <canvas id="areaChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><svg class="chart-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12H5c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2c0-1.1-.9-2-2-2zm-2.5-4c0-.83.67-1.5 1.5-1.5h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1c-.83 0-1.5-.67-1.5-1.5v-1zm-6 0c0-.83.67-1.5 1.5-1.5h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1c-.83 0-1.5-.67-1.5-1.5v-1zm-6 0c0-.83.67-1.5 1.5-1.5h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1c-.83 0-1.5-.67-1.5-1.5v-1z"/></svg>Precio Mensual (USD/T)</h2>
+                <div class="chart-container">
+                    <canvas id="precioChart"></canvas>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="toggle-section">
+            <button class="toggle-button" onclick="toggleTables()">Mostrar/Ocultar Tablas de Datos</button>
+        </div>
+        
+        <div id="data-tables" class="hidden">
+            
+            <div class="table-container">
+                <h2>Datos de Producción por Zona</h2>
+                <table id="produccion-table"></table>
+            </div>
+
+            <div class="table-container">
+                <h2>Datos de Ventas por Mercado</h2>
+                <table id="ventas-table"></table>
+            </div>
+            
+            <div class="table-container">
+                <h2>Datos de Área Neta Sembrada</h2>
+                <table id="area-table"></table>
+            </div>
+            
+            <div class="table-container">
+                <h2>Datos de Precio Mensual (USD/T)</h2>
+                <table id="precio-table"></table>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Datos de los archivos proporcionados, adaptados para ser utilizados en JS
+        const data = {
+            produccion: {
+                headers: ['Zona', '1989', '1990', '1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                rows: [
+                    ['Central', 85128, 73640, 72497, 76114, 77510, 82735, 84573, 100062, 99208, 91493, 112618, 118227, 122052, 123759, 122915, 156434, 177458, 203254, 223372, 266690, 271988, 246177, 273726, 265840, 294740, 322382, 354203, 317651, 476347, 500410, 475043, 473745, 553336, 602762, 578137, 525671],
+                    ['Norte', 64094, 70751, 80389, 77183, 93178, 103913, 105158, 114562, 118136, 114903, 132119, 149253, 150646, 139795, 158508, 183015, 193866, 203999, 221531, 243969, 252866, 249973, 305738, 343314, 332760, 358067, 370285, 304859, 393255, 421911, 365788, 325147, 352462, 372560, 331333, 272863],
+                    ['Oriental', 60011, 58313, 78664, 103657, 121088, 129703, 135484, 131756, 148916, 150252, 180313, 177861, 196582, 185469, 167233, 206691, 199640, 218832, 215762, 226553, 261220, 245814, 356637, 354338, 399055, 412714, 527400, 498933, 724034, 670958, 639450, 704388, 776535, 722660, 847401, 835503],
+                    ['Suroccidental', 23004, 22902, 22264, 28563, 31714, 36811, 39224, 47115, 56523, 53948, 67304, 75124, 74397, 75848, 76814, 83876, 89163, 88222, 72576, 40297, 18764, 11075, 8963, 10310, 14280, 18266, 23334, 24760, 33747, 38232, 49059, 54780, 65556, 70400, 84604, 85772],
+                    ['Total', 232237, 225606, 253814, 285517, 323490, 353162, 364439, 393495, 422783, 410596, 492354, 520465, 543676, 524872, 525470, 630016, 660126, 714308, 733241, 777509, 804838, 753039, 945064, 973802, 1040835, 1111429, 1275222, 1146203, 1627383, 1631509, 1529339, 1558060, 1747888, 1768381, 1841475, 1719809]
+                ]
+            },
+            ventas: {
+                headers: ['Mercado', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                rows: [
+                    ['Mercado Nacional', 325599, 399546, 428416, 412805, 418711, 382275, 380190, 414771, 460821, 425890, 451414, 575847, 664385, 772815, 802209, 857868, 862682, 844415, 754371, 813350, 779105, 828646, 848208, 1210986, 1319253, 1356333, 1328012],
+                    ['Mercado Exportación', 13060, 58186, 116774, 139242, 103897, 150466, 243781, 254313, 244710, 303564, 323192, 215994, 87044, 169087, 173648, 169203, 250364, 419258, 401334, 805859, 840993, 716350, 705498, 492733, 467140, 490362, 381560],
+                    ['Total', 338659, 457732, 545190, 552047, 522608, 532742, 623971, 669084, 705530, 729455, 774606, 791842, 751429, 941903, 975857, 1027071, 1113046, 1263673, 1155705, 1619209, 1620098, 1544996, 1553706, 1703719, 1786393, 1846695, 1709572]
+                ]
+            },
+            area: {
+                headers: ['Zona', '1989', '1990', '1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                rows: [
+                    ['Central', 26851, 27227, 27679, 27825, 27945, 27946, 29171, 29597, 29434, 32385, 35422, 38373, 46691, 52863, 58667, 64845, 71612, 85934, 95337, 108713, 120102, 130623, 139183, 144780, 160105, 156161, 160241, 167023, 170815, 173979, 178105, 185925, 190208, 191905, 202546, 206656],
+                    ['Norte', 29585, 31518, 31668, 32018, 33103, 34315, 35521, 36016, 35718, 36771, 37513, 39689, 40541, 42967, 50016, 52595, 63108, 69740, 71890, 77241, 87577, 92683, 99964, 102658, 106088, 111293, 113984, 115851, 116529, 116391, 113247, 111781, 104340, 99637, 100359, 106772],
+                    ['Oriental', 43445, 44846, 44947, 45147, 45379, 45480, 46928, 47330, 50680, 55379, 56322, 57791, 64439, 72996, 75904, 83126, 92120, 100772, 106352, 116413, 128560, 139515, 148871, 161053, 172678, 185486, 197539, 209546, 221404, 240214, 257189, 265728, 265912, 265283, 271890, 273376],
+                    ['Suroccidental', 10012, 10970, 12124, 12638, 12725, 13057, 13102, 14216, 18815, 20053, 21594, 22167, 23785, 25605, 26677, 28633, 32911, 35386, 33902, 22959, 15763, 16789, 14959, 15625, 14870, 14601, 15306, 16268, 17020, 17978, 19001, 19999, 19416, 19975, 21422, 22338],
+                    ['Total', 109893, 114561, 116418, 117628, 119152, 120798, 124722, 127159, 134647, 144589, 150851, 158020, 175455, 194431, 211265, 229198, 259751, 291832, 307481, 325326, 352003, 379611, 402977, 424116, 453741, 467541, 487070, 508688, 525769, 548562, 567543, 583434, 579876, 576800, 596217, 609142]
+                ]
+            },
+            precio: {
+                headers: ['Mes', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                rows: [
+                    ['enero', 512.34, 533.27, 541.44, 300.85, 208.43, 316.69, 429.98, 460.84, 346.60, 381.61, 541.85, 987.83, 519.32, 749.51, 1221.48, 1019.37, 802.22, 776.42, 635.72, 562.47, 698.43, 640.90, 539.06, 718.00, 872.78, 1234.51, 910.23, 815.90],
+                    ['febrero', 520.65, 582.53, 462.63, 279.15, 195.79, 304.25, 422.18, 497.83, 347.74, 395.82, 551.60, 1117.72, 519.90, 752.56, 1228.62, 1061.84, 811.15, 810.67, 636.53, 614.44, 661.93, 641.15, 551.35, 630.07, 876.38, 1364.79, 922.69, 811.68],
+                    ['marzo', 503.90, 576.13, 402.47, 295.84, 220.29, 305.30, 388.46, 512.71, 376.46, 393.37, 566.64, 1159.13, 531.30, 784.29, 1127.35, 1104.91, 778.88, 844.93, 607.03, 647.27, 627.89, 624.34, 522.64, 545.92, 932.41, 1491.06, 881.42, 881.96],
+                    ['abril', 503.45, 601.35, 416.89, 317.54, 215.71, 312.23, 367.91, 496.88, 376.84, 397.78, 629.65, 1088.07, 656.36, 789.38, 1105.42, 1151.25, 763.57, 811.18, 591.74, 687.90, 582.92, 622.78, 526.69, 505.53, 926.02, 1463.48, 843.41, 862.52],
+                    ['mayo', 494.30, 634.91, 383.67, 285.06, 202.10, 337.81, 368.90, 453.51, 370.10, 401.84, 700.30, 1097.55, 741.22, 764.24, 1100.35, 1033.41, 770.32, 788.41, 604.67, 639.44, 601.57, 610.88, 488.73, 486.49, 1008.38, 1445.44, 777.51, 825.84],
+                    ['junio', 471.59, 576.72, 330.08, 277.40, 215.04, 373.75, 374.10, 403.54, 369.40, 398.20, 710.97, 1100.39, 683.70, 738.24, 1067.43, 935.03, 771.42, 755.88, 609.85, 609.66, 577.20, 583.51, 482.40, 555.05, 883.68, 1257.83, 762.61, 832.69],
+                    ['julio', 447.96, 580.75, 280.61, 271.96, 281.61, 369.62, 358.37, 380.72, 370.84, 419.96, 738.01, 1032.18, 594.23, 751.14, 1032.85, 962.29, 717.43, 733.47, 576.12, 572.39, 600.65, 547.52, 481.35, 593.97, 968.76, 892.68, 861.50, 846.89],
+                    ['agosto', 450.39, 579.30, 319.97, 266.73, 312.88, 391.88, 338.77, 381.80, 364.27, 441.52, 708.22, 792.48, 673.38, 827.12, 1015.86, 948.64, 710.31, 666.67, 494.71, 623.87, 624.43, 543.47, 521.08, 645.53, 1023.44, 921.76, 834.62, 861.40],
+                    ['septiembre', 462.04, 609.26, 342.70, 250.95, 260.41, 369.43, 359.08, 382.98, 374.04, 421.57, 737.34, 669.24, 619.87, 855.44, 976.39, 923.07, 722.87, 650.93, 502.58, 641.19, 659.80, 534.70, 524.65, 689.25, 1045.04, 813.16, 808.62, 922.79],
+                    ['octubre', 496.64, 598.96, 326.00, 220.16, 245.25, 374.57, 430.95, 372.91, 383.63, 432.55, 800.32, 477.53, 629.97, 938.55, 914.77, 808.84, 759.43, 667.55, 547.43, 643.63, 650.04, 528.84, 540.15, 700.99, 1177.35, 827.47, 779.69, 1013.54],
+                    ['noviembre', 511.18, 610.45, 317.56, 222.56, 292.69, 412.94, 457.73, 378.59, 375.45, 488.51, 881.55, 431.80, 689.09, 1049.03, 984.22, 788.83, 812.22, 668.55, 538.67, 667.86, 649.79, 486.85, 630.67, 792.97, 1173.75, 903.68, 824.58, 1106.69],
+                    ['diciembre', 510.75, 581.42, 313.10, 213.19, 306.26, 432.34, 469.67, 368.32, 372.49, 534.76, 887.57, 444.49, 747.76, 1160.60, 975.04, 767.22, 805.84, 627.53, 564.39, 698.86, 613.98, 499.03, 698.97, 848.19, 1101.03, 899.78, 804.24, 1071.83]
+                ]
+            }
+        };
+
+        const yearSelect = document.getElementById('year-select');
+        const firstYear = Math.min(...data.produccion.headers.slice(1).map(Number));
+        const lastYear = Math.max(...data.produccion.headers.slice(1).map(Number));
+        
+        for (let year = lastYear; year >= firstYear; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+
+        let produccionChart, ventasChart, areaChart, precioChart;
+
+        function updateCharts(year) {
+            const prodYearIndex = data.produccion.headers.indexOf(year.toString());
+            const ventasYearIndex = data.ventas.headers.indexOf(year.toString());
+            const precioYearIndex = data.precio.headers.indexOf(year.toString());
+            const areaYearIndex = data.area.headers.indexOf(year.toString());
+
+            if (prodYearIndex !== -1) {
+                const produccionData = data.produccion.rows.slice(0, -1).map(row => row[prodYearIndex]);
+                const produccionLabels = data.produccion.rows.slice(0, -1).map(row => row[0]);
+                renderProduccionChart(produccionLabels, produccionData);
+            }
+
+            if (ventasYearIndex !== -1) {
+                const ventasData = data.ventas.rows.slice(0, -1).map(row => row[ventasYearIndex]);
+                const ventasLabels = data.ventas.rows.slice(0, -1).map(row => row[0]);
+                renderVentasChart(ventasLabels, ventasData);
+            }
+
+            if (areaYearIndex !== -1) {
+                const areaData = data.area.rows.slice(0, -1).map(row => row[areaYearIndex]);
+                const areaLabels = data.area.rows.slice(0, -1).map(row => row[0]);
+                renderAreaChart(areaLabels, areaData);
+            }
+            
+            if (precioYearIndex !== -1) {
+                const precioData = data.precio.rows.map(row => row[precioYearIndex]);
+                const precioLabels = data.precio.rows.map(row => row[0]);
+                renderPrecioChart(precioLabels, precioData);
+            }
+        }
+        
+        function renderProduccionChart(labels, values) {
+            const ctx = document.getElementById('produccionChart').getContext('2d');
+            if (produccionChart) produccionChart.destroy();
+            produccionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Producción (Toneladas)',
+                        data: values,
+                        backgroundColor: '#4caf50',
+                        borderColor: '#2e7d32',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Toneladas'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderVentasChart(labels, values) {
+            const ctx = document.getElementById('ventasChart').getContext('2d');
+            if (ventasChart) ventasChart.destroy();
+            ventasChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ventas por Mercado',
+                        data: values,
+                        backgroundColor: [
+                            '#2e7d32',
+                            '#5d4037'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('es-CO').format(context.parsed) + ' Toneladas';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAreaChart(labels, values) {
+            const ctx = document.getElementById('areaChart').getContext('2d');
+            if (areaChart) areaChart.destroy();
+            areaChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Área (Hectáreas)',
+                        data: values,
+                        backgroundColor: [
+                            '#2e7d32',
+                            '#8bc34a',
+                            '#5d4037',
+                            '#aed581'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('es-CO').format(context.parsed) + ' ha';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderPrecioChart(labels, values) {
+            const ctx = document.getElementById('precioChart').getContext('2d');
+            if (precioChart) precioChart.destroy();
+            precioChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Precio (USD/T)',
+                        data: values,
+                        borderColor: '#5d4037',
+                        backgroundColor: 'rgba(93, 64, 55, 0.2)',
+                        tension: 0.3,
+                        pointBackgroundColor: '#2e7d32',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#2e7d32'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'USD/T'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTable(tableId, headers, rows) {
+            const table = document.getElementById(tableId);
+            table.innerHTML = '';
+            
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            
+            const tbody = table.createTBody();
+            rows.forEach(rowData => {
+                const row = tbody.insertRow();
+                rowData.forEach(cellData => {
+                    const cell = row.insertCell();
+                    cell.textContent = typeof cellData === 'number' ? new Intl.NumberFormat('es-CO').format(cellData) : cellData;
+                });
+            });
+        }
+        
+        function populateTables() {
+            createTable('produccion-table', data.produccion.headers, data.produccion.rows);
+            createTable('ventas-table', data.ventas.headers, data.ventas.rows);
+            createTable('area-table', data.area.headers, data.area.rows);
+            createTable('precio-table', data.precio.headers, data.precio.rows);
+        }
+
+        function toggleTables() {
+            const tablesSection = document.getElementById('data-tables');
+            tablesSection.classList.toggle('hidden');
+        }
+
+        function downloadReport() {
+            const workbook = XLSX.utils.book_new();
+            
+            const produccionData = [data.produccion.headers, ...data.produccion.rows];
+            const produccionSheet = XLSX.utils.aoa_to_sheet(produccionData);
+            XLSX.utils.book_append_sheet(workbook, produccionSheet, 'Produccion');
+            
+            const ventasData = [data.ventas.headers, ...data.ventas.rows];
+            const ventasSheet = XLSX.utils.aoa_to_sheet(ventasData);
+            XLSX.utils.book_append_sheet(workbook, ventasSheet, 'Ventas');
+
+            const areaData = [data.area.headers, ...data.area.rows];
+            const areaSheet = XLSX.utils.aoa_to_sheet(areaData);
+            XLSX.utils.book_append_sheet(workbook, areaSheet, 'Area');
+            
+            const precioData = [data.precio.headers, ...data.precio.rows];
+            const precioSheet = XLSX.utils.aoa_to_sheet(precioData);
+            XLSX.utils.book_append_sheet(workbook, precioSheet, 'Precio');
+            
+            XLSX.writeFile(workbook, 'Reporte_Palma_Aceite.xlsx');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            yearSelect.value = '2024';
+            updateCharts(yearSelect.value);
+            populateTables();
+            
+            yearSelect.addEventListener('change', (e) => {
+                updateCharts(e.target.value);
+            });
+            
+            document.getElementById('download-report').addEventListener('click', downloadReport);
+        });
+    </script>
+</body>
+</html>
